@@ -144,6 +144,8 @@ TIME_FORMATS = (
 )
 OUTPUT_TIME_FORMAT = "%Y%m%d%H%M%S"
 
+OUTPUT_PATH = "data/games"
+
 API_ENDPOINT = "https://www.17lands.com"
 ENDPOINT_USER = "api/account"
 ENDPOINT_DECK_SUBMISSION = "deck"
@@ -225,9 +227,10 @@ def get_rank_string(rank_class, level, percentile, place, step):
 class Follower:
     """Follows along a log, parses the messages, and passes along the parsed data to the API endpoint."""
 
-    def __init__(self, token, host):
+    def __init__(self, token, host, output):
         self.host = host
         self.token = token
+        self.output = pathlib.Path(output)
         self.buffer = []
         self.cur_log_time = datetime.datetime.fromtimestamp(0)
         self.last_utc_time = datetime.datetime.fromtimestamp(0)
@@ -306,6 +309,18 @@ class Follower:
             time.sleep(sleep_time)
         logger.info(f"{response.status_code} Response: {response.text}")
         return response
+
+    def __save_blob(self, blob, name=None):
+        """
+        Save a blob to a file in the current directory.
+
+        :param blob: The JSON data to save.
+        """
+        if name is None:
+            name = self.last_utc_time.isoformat()
+
+        with open(self.output / f"{name}.json", "w") as f:
+            json.dump(blob, f)
 
     def parse_log(self, filename, follow):
         """
@@ -521,11 +536,17 @@ class Follower:
             logger.info(
                 f'Submitting game with {len(self.pending_game_submission["history"]["events"])} history events'
             )
+
             response = self.__retry_post(
                 f"{self.host}/{ENDPOINT_GAME_RESULT}",
                 blob=self.pending_game_submission,
                 use_gzip=True,
             )
+
+            self.__save_blob(
+                self.pending_game_submission, self.pending_game_submission["match_id"]
+            )
+
             self.__clear_game_data()
             self.pending_game_submission = None
 
@@ -1296,7 +1317,7 @@ def processing_loop(args, token):
 
     follow = not args.once
 
-    follower = Follower(token, host=args.host)
+    follower = Follower(token, host=args.host, output=args.output)
 
     # if running in "normal" mode...
     if args.log_file is None and args.host == API_ENDPOINT and follow:
@@ -1334,6 +1355,11 @@ def main():
         "--host",
         default=API_ENDPOINT,
         help=f"Host to submit requests to. If not specified, will use {API_ENDPOINT}",
+    )
+    parser.add_argument(
+        "--output",
+        default=OUTPUT_PATH,
+        help=f"Path to save game files to. If not specified, will use {OUTPUT_PATH}",
     )
     parser.add_argument(
         "--once",
