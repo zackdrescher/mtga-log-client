@@ -33,7 +33,10 @@ import uuid
 from collections import defaultdict, namedtuple
 
 import dateutil.parser
+from dotenv import load_dotenv
 import requests
+
+load_dotenv()
 
 LOG_FOLDER = os.path.join(os.path.expanduser("~"), ".seventeenlands")
 if not os.path.exists(LOG_FOLDER):
@@ -113,6 +116,7 @@ POSSIBLE_PREVIOUS_FILEPATHS = list(
         itertools.product(POSSIBLE_ROOTS, (PREVIOUS_LOG_PATH,)),
     )
 )
+MTGA_LOG_PATH = os.getenv("MTGA_LOG_PATH")
 
 CONFIG_FILE = os.path.join(os.path.expanduser("~"), ".mtga_follower.ini")
 
@@ -1350,6 +1354,7 @@ def main():
         "-l",
         "--log_file",
         help=f"Log filename to process. If not specified, will try one of {POSSIBLE_CURRENT_FILEPATHS}",
+        default=MTGA_LOG_PATH,
     )
     parser.add_argument(
         "--host",
