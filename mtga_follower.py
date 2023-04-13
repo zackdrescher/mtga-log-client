@@ -1193,10 +1193,7 @@ def get_config():
             token = validate_uuid_v4(config["client"].get("token"))
 
     if token is None or validate_uuid_v4(token) is None:
-        try:
-            token = get_client_token_visual()
-        except ModuleNotFoundError:
-            token = get_client_token_cli()
+        token = get_client_token_cli()
 
         if "client" not in config:
             config["client"] = {}
